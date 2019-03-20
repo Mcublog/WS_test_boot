@@ -1,0 +1,121 @@
+#include "main.h"
+#include "cmsis_os.h"
+
+#include "init_main.h"
+
+//-------------------------Local variables--------------------------------
+UART_HandleTypeDef huart2;
+
+typedef enum
+{
+	MSG_PWR_SOURCE,
+	MMSG_ERROR_STATUS,
+ 
+    MMSG_EMPTY = 0xFFFF
+}msg_type_t;
+
+typedef struct
+{
+    msg_type_t type;
+    uint32_t size;
+    void *data;
+}msg_t; // message type
+//------------------------------------------------------------------------
+
+//-------------------------Project options--------------------------------
+//------------------------------------------------------------------------
+
+//-------------------------Task list--------------------------------------
+void IndicationControlTask  (void *pvParameters);
+void PwrControlTask         (void *pvParameters);
+//------------------------------------------------------------------------
+
+//-------------------------Semaphore list---------------------------------
+xSemaphoreHandle xbPwr;// For checking power source status
+//------------------------------------------------------------------------
+
+//-------------------------Queue list-------------------------------------
+xQueueHandle xqMsg;
+//------------------------------------------------------------------------
+
+//-------------------------Programm entry point---------------------------
+int main(void)
+{
+    //-------------------------HW init----------------------------------------
+    HAL_Init();
+    SystemClock_Config();
+    MX_GPIO_Init();
+    MX_USART2_UART_Init();
+    //------------------------------------------------------------------------
+    
+    //-------------------------Creating semaphores----------------------------    
+    vSemaphoreCreateBinary(xbPwr);
+    //------------------------------------------------------------------------
+    
+    //-------------------------Creating queues--------------------------------
+    xqMsg = xQueueCreate(8, sizeof(msg_t));    
+    //------------------------------------------------------------------------    
+    
+    //-------------------------Creating tasks---------------------------------
+    xTaskCreate(IndicationControlTask, "IndicationControlTask", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY, NULL);    
+    xTaskCreate(PwrControlTask,        "PwrControlTask",        configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY, NULL);
+    //------------------------------------------------------------------------    
+    
+    //-------------------------Semaphores init--------------------------------
+    xSemaphoreTake(xbPwr, portMAX_DELAY);
+    //------------------------------------------------------------------------
+    
+    osKernelStart();
+    while (1)
+    {
+    }
+}
+//------------------------------------------------------------------------
+
+//-------------------------IndicationManagerTask--------------------------
+void IndicationControlTask (void *pvParameters)
+{
+    while(1)
+    {
+        //if (xQueueReceive(xqIndMsg, &msg, 0));
+        
+        HAL_GPIO_TogglePin(GPIOD, LED1_Pin);
+        vTaskDelay(500);
+    }
+}
+//------------------------------------------------------------------------
+
+//-------------------------PwrControlTask---------------------------------
+void PwrControlTask (void *pvParameters)
+{
+    //Check power source
+    uint32_t pwr_status = HAL_GPIO_ReadPin(GPIOE, EXT_PWR_Pin);
+    
+    const msg_t pwr_msg =
+    {
+        .type = MSG_PWR_SOURCE,
+        .size = sizeof(pwr_status),
+        .data = &pwr_status
+    };
+    
+    while(1)
+    {
+        xSemaphoreTake(xbPwr, portMAX_DELAY);
+        vTaskDelay(50);// delay for antibounce 
+        pwr_status = HAL_GPIO_ReadPin(GPIOE, EXT_PWR_Pin);
+        xQueueSendToBack( xqMsg, &pwr_msg, portMAX_DELAY);
+        HAL_GPIO_TogglePin(GPIOD, LED2_Pin);
+    }
+}
+//------------------------------------------------------------------------
+
+//-------------------------GPIO IRQ handler-------------------------------
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+	BaseType_t pxHigherPriorityTaskWoken = pdTRUE;
+	if (GPIO_Pin == EXT_PWR_Pin)
+	{
+        xSemaphoreGiveFromISR(xbPwr, &pxHigherPriorityTaskWoken);
+	}
+}
+//------------------------------------------------------------------------
