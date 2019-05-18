@@ -68,7 +68,7 @@ void ExecMainFW(void)
     pFunction Jump_To_Application = (pFunction) jumpAddress;
  
     HAL_RCC_DeInit();  
- 
+    HAL_DeInit();
 
     __disable_irq();
     SCB->VTOR = MAIN_PROGRAM_START_ADDRESS;
