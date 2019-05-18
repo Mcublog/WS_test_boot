@@ -8,11 +8,13 @@
 #include "firmware.h"
 #endif
 //-------------------------Types and definition-------------------------------
-#define MAIN_PROGRAM_START_ADDRESS  0x08004000
+#define MAIN_PROGRAM_START_ADDRESS  0x08030000
 #define MAIN_PROGRAM_END_ADDRESS    0x08080000
 //----------------------------------------------------------------------------
 
 //-------------------------Local variables and fucntion-----------------------
+UART_HandleTypeDef huart2;
+
 void ExecMainFW(void);
 //----------------------------------------------------------------------------
 
@@ -61,21 +63,16 @@ int main(void)
 
 void ExecMainFW(void)
 {
- uint32_t jumpAddress = *(__IO uint32_t*) (MAIN_PROGRAM_START_ADDRESS + 4); 
- //uint32_t jumpAddress = MAIN_PROGRAM_START_ADDRESS + 4; 
- pFunction Jump_To_Application = (pFunction) jumpAddress;
+    uint32_t jumpAddress = *((__IO uint32_t*) (MAIN_PROGRAM_START_ADDRESS + 4)); 
+    
+    pFunction Jump_To_Application = (pFunction) jumpAddress;
  
- RCC->APB1RSTR = 0xFFFFFFFF; RCC->APB1RSTR = 0x0; 
- RCC->APB2RSTR = 0xFFFFFFFF; RCC->APB2RSTR = 0x0; 
- RCC->APB1ENR = 0x0;
- RCC->APB2ENR = 0x0;
- //RCC->AHBENR = 0x0;
- HAL_RCC_DeInit();  
+    HAL_RCC_DeInit();  
  
 
-__disable_irq();
-SCB->VTOR = MAIN_PROGRAM_START_ADDRESS;
-__enable_irq();    
-__set_MSP(*(__IO uint32_t*) MAIN_PROGRAM_START_ADDRESS); 
-Jump_To_Application(); 
+    __disable_irq();
+    SCB->VTOR = MAIN_PROGRAM_START_ADDRESS;
+    __enable_irq();    
+    __set_MSP(*(__IO uint32_t*) MAIN_PROGRAM_START_ADDRESS); 
+    Jump_To_Application(); 
 }
