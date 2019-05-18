@@ -7,12 +7,15 @@ def create_array(bin_file, name_out, offset = ''):
     if (offset == '' ):
         print('[ERROR] : offset is EMPTY')
         raise SystemExit
+        
     # Create byte arry
+    bin_data = b''
     try:
-        f = open(bin_file, 'rb')
+        with open(bin_file, 'rb') as f:
+            bin_data = f.read()
     except:
         print('[ERROR] :' + bin_file + '-- Not found')
-    array = bytearray(f.read())
+    array = bytearray(bin_data)
     array_len = str(len(array))
     print('[INFO]: Array created: len == ' + array_len)
     # Create .h
