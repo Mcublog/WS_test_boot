@@ -8,9 +8,14 @@
     #include "firmware.h"
 #endif
 //-------------------------Types and definition-------------------------------
+#define INNER_FLASH_ADDR            0x08000000
 #define MAIN_PROGRAM_START_ADDRESS  0x08030000
 #define MAIN_PROGRAM_END_ADDRESS    0x08080000
+
+#define FIRMWARE_OFFST (MAIN_PROGRAM_START_ADDRESS - INNER_FLASH_ADDR)
+    
 //----------------------------------------------------------------------------
+
 
 //-------------------------Local variables and fucntion-----------------------
 UART_HandleTypeDef huart2;
@@ -19,7 +24,6 @@ void ExecMainFW(void);
 //----------------------------------------------------------------------------
 
 //-------------------------Project options--------------------------------
-typedef  void (*pFunction)(void);
 //------------------------------------------------------------------------
 
 //-------------------------Task list--------------------------------------
@@ -33,7 +37,10 @@ typedef  void (*pFunction)(void);
 
 //-------------------------Programm entry point---------------------------
 int main(void)
-{  
+{
+#ifdef FIRMWARE    
+    SCB->VTOR = FLASH_BASE | FIRMWARE_OFFST;
+#endif    
     //-------------------------HW init----------------------------------------
     HAL_Init();  
     SystemClock_Config();
@@ -57,6 +64,7 @@ int main(void)
 
 void ExecMainFW(void)
 {
+    typedef  void (*pFunction)(void);
     uint32_t jumpAddress = *((__IO uint32_t*) (MAIN_PROGRAM_START_ADDRESS + 4)); 
     
     pFunction Jump_To_Application = (pFunction) jumpAddress;
@@ -64,9 +72,8 @@ void ExecMainFW(void)
     HAL_RCC_DeInit();  
     HAL_DeInit();
 
-    //__disable_irq();
     SCB->VTOR = MAIN_PROGRAM_START_ADDRESS;
-    //__enable_irq();    
+
     __set_MSP(*(__IO uint32_t*) MAIN_PROGRAM_START_ADDRESS); 
     Jump_To_Application(); 
 }

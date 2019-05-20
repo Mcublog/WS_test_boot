@@ -1,4 +1,4 @@
-import os, sys, shutil
+import os, sys, shutil, getopt
 import subprocess
 
 
@@ -12,35 +12,31 @@ footer = """
 
 """
 
-def get_firmware_hex(current_path):
-    current_path = current_path.split('\\')
-    
-    # Get path to ../
-    path = ''
-    for str in current_path:
-        if (str == 'Utils'):
-            break
-        path += str + '\\'
-    files = os.listdir(path)
-    
+def usage():
+    print("""Usage: %s [-h] [-i input]
+    -h          This help
+    -i          Path to .hex dir
+    -o          Firmware offset (exampel: 0x8030000)
+    """ % sys.argv[0])
+
+def find_hex_path(path):
+    try:
+        files = os.listdir(path)
+    except:
+        print('[ERROR] : Hex path does not have a directory')
     # Find path to HEX file
     hex_path = ''
     for file in files:
-        if os.path.isdir(path + '\\' + file):
-            contents = os.listdir(path + '\\' + file)
-            for data in contents:
-                if '.hex' in data:
-                    hex_path = path + '\\' + file + '\\' + data
-                    break
-    # print(hex)
+        if '.hex' in file:
+            hex_path = path + '\\' + file
     return hex_path
 
-
-    
 def create_array(bin_file, name_out, offset = ''):
     # check offset
     if (offset == '' ):
         print('[ERROR] : offset is EMPTY')
+        if os.path.isfile(bin_file):
+            os.remove(bin_file)
         raise SystemExit(0)
         
     # Create byte array
@@ -77,36 +73,65 @@ def create_array(bin_file, name_out, offset = ''):
         f.write(footer)
 
 def main():
-    hex_path = get_firmware_hex(os.getcwd())
-    shutil.copy(hex_path, os.getcwd())
     # Default param
-    input_hex = hex_path.split('\\')[-1]
-    if '.hex' not in input_hex:
-        print('[ERROR]: Intput HEX not found')
-        raise SystemExit(0)
-    firmware_addr = 0x8030000
-    
+    hex_path = ''
+    input_hex = ''
+    firmware_addr = '0x8030000'
     c_file_name = 'firmware'
     bin_file = 'app.bin'
     
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], 'hi:o:', ["input=", "offset="])
+    except getopt.GetoptError as err:
+        usage() # print help information and exit:
+        SystemExit(2)            
+    for o, a in opts:
+        if o in ('-h'):
+            usage()
+            return
+        elif o in ("-i", "--input"):
+            hex_path = a
+        elif o in ("-o", "--offset"):
+            firmware_addr = a            
+        else:
+            return print("Undefined param" + o)
+    # Copy hex
+    hex_path = "D:\Projects\Keil Project\WS_test_boot\MDK-ARM\WS_test_task"
+    hex_path = find_hex_path(hex_path)
+    try:
+        shutil.copy(hex_path, os.getcwd())
+    except:
+        print('[ERROR] : .hex path is EMPTY')
+        raise SystemExit(0)
+        
+    input_hex = hex_path.split('\\')[-1]
+
+    if os.path.isfile(c_file_name + '.h'):
+        os.remove(c_file_name + '.h')
+
     print('[INFO]: Input HEX: ' + input_hex)
-    print('[INFO]: Firmware addr: ' + hex(firmware_addr))
+    print('[INFO]: Firmware addr: ' + firmware_addr)
     
     # Create args
     converter = os.getcwd() + '\\srec_cat.exe'
     print('[INFO]: Path ot hexconv: ' + converter)
     args = [converter + ' ' + input_hex]
-    args += [' -Intel -offset -' + hex(firmware_addr)]
+    args += [' -Intel -offset -' + firmware_addr]
     args += [' -o ' + bin_file + ' -Binary']
     
     print('[INFO]: Run arg: ' + str(args))
     
     # Create .bin file with srec_cat.exe
     subprocess.call([args])
-
-    create_array(bin_file, c_file_name, offset = hex(firmware_addr))
+    
+    os.remove(input_hex)
+    
+    create_array(bin_file, c_file_name, offset = firmware_addr)
     print('[INFO]: ' + c_file_name + '.h' + ' -- Created successful')
-
+    
+    os.remove(bin_file)
+    
+    
 if __name__ == '__main__':
     main()
 

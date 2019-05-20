@@ -1,0 +1,1 @@
+python bin_to_array.py -i "D:\Projects\Keil Project\WS_test_boot\MDK-ARM\WS_test_task" -o 0x8030000
