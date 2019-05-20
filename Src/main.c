@@ -1,11 +1,11 @@
 #include "main.h"
-#include "cmsis_os.h"
+//#include "cmsis_os.h"
 
 #include "init_main.h"
 #include "error_list.h"
 
 #ifdef BOOT
-#include "firmware.h"
+    #include "firmware.h"
 #endif
 //-------------------------Types and definition-------------------------------
 #define MAIN_PROGRAM_START_ADDRESS  0x08030000
@@ -20,11 +20,6 @@ void ExecMainFW(void);
 
 //-------------------------Project options--------------------------------
 typedef  void (*pFunction)(void);
-
-#define LED_PORT    (GPIOD)
-#define LED_BLUE    (LED2_Pin)
-#define LED_GREEN   (LED3_Pin)
-#define LED_RED     (LED4_Pin)
 //------------------------------------------------------------------------
 
 //-------------------------Task list--------------------------------------
@@ -38,26 +33,25 @@ typedef  void (*pFunction)(void);
 
 //-------------------------Programm entry point---------------------------
 int main(void)
-{
+{  
     //-------------------------HW init----------------------------------------
-    HAL_Init();
+    HAL_Init();  
     SystemClock_Config();
     MX_GPIO_Init();
     //------------------------------------------------------------------------
 #ifdef BOOT    
-    HAL_GPIO_WritePin(LED_PORT, LED2_Pin, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(LED0_GPIO_Port, LED0_Pin, GPIO_PIN_SET);
     HAL_Delay(1000);
     ExecMainFW();
-#endif    
+#endif
+#ifdef FIRMWARE
+    //__enable_irq();
     while (1)
     {
-        #ifdef FIRMWARE
-        HAL_GPIO_WritePin(LED_PORT, LED3_Pin, GPIO_PIN_SET);
-        HAL_Delay(50);
-        HAL_GPIO_WritePin(LED_PORT, LED3_Pin, GPIO_PIN_RESET);
-        HAL_Delay(50);
-        #endif
+        HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);
+        HAL_Delay(100);
     }
+#endif    
 }
 //------------------------------------------------------------------------
 
@@ -70,9 +64,9 @@ void ExecMainFW(void)
     HAL_RCC_DeInit();  
     HAL_DeInit();
 
-    __disable_irq();
+    //__disable_irq();
     SCB->VTOR = MAIN_PROGRAM_START_ADDRESS;
-    __enable_irq();    
+    //__enable_irq();    
     __set_MSP(*(__IO uint32_t*) MAIN_PROGRAM_START_ADDRESS); 
     Jump_To_Application(); 
 }

@@ -62,7 +62,8 @@
 /* USER CODE END EM */
 
 /* Exported functions prototypes ---------------------------------------------*/
-void EXTI0_IRQHandler(void);
+void SVC_Handler(void);
+void PendSV_Handler(void);
 void TIM8_TRG_COM_TIM14_IRQHandler(void);
 /* USER CODE BEGIN EFP */
 
