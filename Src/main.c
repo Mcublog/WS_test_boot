@@ -94,7 +94,7 @@ static void _check_boot_mark(void)
         HAL_RCC_DeInit();// Clock deinit
         HAL_DeInit();
 
-        __set_MSP(*(volatile uint32_t*) MAIN_PROGRAM_START_ADDRESS);
+        //SCB->VTOR = FLASH_BASE | FIRMWARE_OFFST;
 
         typedef  void (*pFunction)(void);
         // 4 offset added to go to the beginning of the IRQ table
