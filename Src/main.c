@@ -1,5 +1,4 @@
 #include "main.h"
-//#include "cmsis_os.h"
 
 #include "init_main.h"
 #include "error_list.h"
@@ -10,7 +9,7 @@
 //-------------------------Types and definition-------------------------------
 #define INNER_FLASH_ADDR            0x08000000
 #define MAIN_PROGRAM_START_ADDRESS  0x08030000
-#define MAIN_PROGRAM_END_ADDRESS    0x08080000
+
 
 #define BOOT_MARK       (0xFFFFFFFF)
 #define RST_BOOT_MARK   (0x00000000)
@@ -42,13 +41,12 @@ static void _set_mark(uint32_t mark);
 //-------------------------Programm entry point---------------------------
 int main(void)
 {
-#ifdef FIRMWARE
-    SCB->VTOR = FLASH_BASE | FIRMWARE_OFFST;
-#endif
+    _check_boot_mark();
+// #ifdef FIRMWARE
+//     SCB->VTOR = FLASH_BASE | FIRMWARE_OFFST;
+// #endif
     //-------------------------HW init----------------------------------------
     HAL_Init();
-
-    _check_boot_mark();
 
     SystemClock_Config();
     MX_GPIO_Init();
@@ -91,22 +89,22 @@ static void _check_boot_mark(void)
 {
     if (_get_mark() == BOOT_MARK)
     {
-        typedef  void (*pFunction)(void);
-        // 4 offset added to go to the beginning of the IRQ table
-        uint32_t jumpAddress = *((volatile uint32_t*) (MAIN_PROGRAM_START_ADDRESS + 4));
-        pFunction Jump_To_Application = (pFunction) jumpAddress;
-
         _set_mark(RST_BOOT_MARK);// clear boot mark, after RST bootloader to start
 
         HAL_RCC_DeInit();// Clock deinit
         HAL_DeInit();
 
-        __disable_irq();
-        SCB->VTOR = MAIN_PROGRAM_START_ADDRESS;
-        __enable_irq();
-
         __set_MSP(*(volatile uint32_t*) MAIN_PROGRAM_START_ADDRESS);
+
+        typedef  void (*pFunction)(void);
+        // 4 offset added to go to the beginning of the IRQ table
+        uint32_t jumpAddress = *((volatile uint32_t*) (MAIN_PROGRAM_START_ADDRESS + 4));
+        pFunction Jump_To_Application = (pFunction) jumpAddress;
         Jump_To_Application();
+    }
+    else
+    {
+        SCB->VTOR = FLASH_BASE | FIRMWARE_OFFST;
     }
 }
 
