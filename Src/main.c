@@ -8,7 +8,7 @@
 #endif
 //-------------------------Types and definition-------------------------------
 #define INNER_FLASH_ADDR            0x08000000
-#define MAIN_PROGRAM_START_ADDRESS  0x08030000
+#define MAIN_PROGRAM_START_ADDRESS  0x08010000
 
 
 #define BOOT_MARK       (0xFFFFFFFF)
@@ -87,7 +87,11 @@ static void _check_boot_mark(void)
 {
     if (_get_mark() == BOOT_MARK)
     {
+         __HAL_RCC_PWR_CLK_ENABLE();
+        
         _set_mark(RST_BOOT_MARK);// clear boot mark, after RST bootloader to start
+        
+        __HAL_RCC_PWR_CLK_DISABLE();
 
         HAL_RCC_DeInit();// Clock deinit
         HAL_DeInit();
