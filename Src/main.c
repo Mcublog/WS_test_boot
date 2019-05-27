@@ -14,6 +14,9 @@
 #define BOOT_MARK       (0xFFFFFFFF)
 #define RST_BOOT_MARK   (0x00000000)
 
+#define MMNGR_BACKUPRAM_OFFSET  (0x0008)
+#define BKP_BASE                (0x4000284C)
+
 #define FIRMWARE_OFFST (MAIN_PROGRAM_START_ADDRESS - INNER_FLASH_ADDR)
 //----------------------------------------------------------------------------
 
@@ -24,6 +27,7 @@ UART_HandleTypeDef huart2;
 static void _set_boot_mark(void);
 static void _check_boot_mark(void);
 static void _set_mark(uint32_t mark);
+static uint32_t _get_mark(void);
 //----------------------------------------------------------------------------
 
 //-------------------------Project options--------------------------------
@@ -42,12 +46,8 @@ static void _set_mark(uint32_t mark);
 int main(void)
 {
     _check_boot_mark();
-// #ifdef FIRMWARE
-//     SCB->VTOR = FLASH_BASE | FIRMWARE_OFFST;
-// #endif
     //-------------------------HW init----------------------------------------
     HAL_Init();
-
     SystemClock_Config();
     MX_GPIO_Init();
     //------------------------------------------------------------------------
@@ -71,10 +71,8 @@ int main(void)
 /param:
 /return:
 -----------------------------------------------------------*/
-void _set_boot_mark(void)
+static void _set_boot_mark(void)
 {
-    uint32_t *prst = (uint32_t*)(BKP_BASE + MMNGR_BACKUPRAM_OFFSET);
-
     _set_mark(BOOT_MARK);
     //RST
     HAL_NVIC_SystemReset();
