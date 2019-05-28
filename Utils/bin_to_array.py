@@ -74,7 +74,7 @@ def create_array(bin_file, name_out, offset = ''):
 
 def main():
     # Default param
-    hex_path = ''
+    hex_path = "D:\Projects\Keil Project\WS_test_boot\MDK-ARM\WS_test_task"
     input_hex = ''
     firmware_addr = '0x8030000'
     c_file_name = 'firmware'
@@ -95,8 +95,8 @@ def main():
             firmware_addr = a            
         else:
             return print("Undefined param" + o)
+            
     # Copy hex
-    hex_path = "D:\Projects\Keil Project\WS_test_boot\MDK-ARM\WS_test_task"
     hex_path = find_hex_path(hex_path)
     try:
         shutil.copy(hex_path, os.getcwd())
