@@ -1,6 +1,5 @@
 import os, sys, shutil, getopt
-import subprocess
-
+from intelhex import IntelHex
 
 header = """#ifndef FIRMWARE_H
 #define FIRMWARE_H
@@ -8,15 +7,16 @@ header = """#ifndef FIRMWARE_H
 
 footer = """
 };
-#endif // FIRMWARE_H'
+#endif // FIRMWARE_H
 
 """
 
 def usage():
-    print("""Usage: %s [-h] [-i input]
+    print("""Usage: %s [-h] [-i input] [-o 0x8030000] [--bin]
     -h          This help
     -i          Path to .hex dir
-    -o          Firmware offset (exampel: 0x8030000)
+    -o          Firmware offset (example: 0x8030000)
+    -b/--bin    Save the binary file (app.bin)
     """ % sys.argv[0])
 
 def find_hex_path(path):
@@ -72,6 +72,11 @@ def create_array(bin_file, name_out, offset = ''):
         
         f.write(footer)
 
+def get_last_line(f, offset):
+    f.seek(-1024, os.SEEK_END)
+    return f.readlines()[offset].decode()
+
+
 def main():
     # Default param
     hex_path = "D:\Projects\Keil Project\WS_test_boot\MDK-ARM\WS_test_task"
@@ -79,12 +84,13 @@ def main():
     firmware_addr = '0x8030000'
     c_file_name = 'firmware'
     bin_file = 'app.bin'
+    bin_out = False
     
     try:
-        opts, args = getopt.getopt(sys.argv[1:], 'hi:o:', ["input=", "offset="])
+        opts, args = getopt.getopt(sys.argv[1:], 'hi:o:b', ["input=", "offset=", "bin"])
     except getopt.GetoptError as err:
         usage() # print help information and exit:
-        SystemExit(2)            
+        SystemExit(2)
     for o, a in opts:
         if o in ('-h'):
             usage()
@@ -92,12 +98,15 @@ def main():
         elif o in ("-i", "--input"):
             hex_path = a
         elif o in ("-o", "--offset"):
-            firmware_addr = a            
+            firmware_addr = a
+        elif o in ("-b", "--bin"):
+            bin_out = True
         else:
             return print("Undefined param" + o)
             
     # Copy hex
     hex_path = find_hex_path(hex_path)
+
     try:
         shutil.copy(hex_path, os.getcwd())
     except:
@@ -105,32 +114,34 @@ def main():
         raise SystemExit(0)
         
     input_hex = hex_path.split('\\')[-1]
-
+    
+    with open(input_hex, 'rb+') as f:
+        last = get_last_line(f, -1)
+        prelast = get_last_line(f, -2)
+        if ':040000' in prelast: # delete expanded addres
+            pos = f.tell() - len(last) - len(prelast)
+            f.seek(pos, os.SEEK_SET)
+            f.truncate()
+            f.write(bytes(last, "utf8"))
+    
+    # Create bin
+    ih = IntelHex(input_hex)
+    ih.tobinfile(bin_file)
+    
     if os.path.isfile(c_file_name + '.h'):
         os.remove(c_file_name + '.h')
 
     print('[INFO]: Input HEX: ' + input_hex)
+    print('[INFO]: Input bin: ' + bin_file)
     print('[INFO]: Firmware addr: ' + firmware_addr)
-    
-    # Create args
-    converter = os.getcwd() + '\\srec_cat.exe'
-    print('[INFO]: Path ot hexconv: ' + converter)
-    args = [converter + ' ' + input_hex]
-    args += [' -Intel -offset -' + firmware_addr]
-    args += [' -o ' + bin_file + ' -Binary']
-    
-    print('[INFO]: Run arg: ' + str(args))
-    
-    # Create .bin file with srec_cat.exe
-    subprocess.call([args])
-    
-    os.remove(input_hex)
-    
+       
     create_array(bin_file, c_file_name, offset = firmware_addr)
     print('[INFO]: ' + c_file_name + '.h' + ' -- Created successful')
     
-    os.remove(bin_file)
+    if not bin_out:
+        os.remove(bin_file)
     
+    os.remove(input_hex)
     
 if __name__ == '__main__':
     main()
